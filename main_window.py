@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import os
 import sys
 import re
@@ -18,7 +15,6 @@ from output_widget import OutputWidget
 
 
 class MainWindow(QMainWindow):
-    """Главное окно текстового редактора"""
     
     def __init__(self):
         super().__init__()
@@ -29,25 +25,20 @@ class MainWindow(QMainWindow):
         self.setup_toolbar()
         self.setup_statusbar()
         
-        # Устанавливаем заголовок окна
         self.update_window_title()
         
-        # Устанавливаем размер окна
         self.resize(900, 700)
         self.setMinimumSize(600, 400)
         
-        # Центрируем окно
         self.center_window()
     
     def center_window(self):
-        """Центрирует окно на экране"""
         screen = QApplication.primaryScreen().geometry()
         x = (screen.width() - self.width()) // 2
         y = (screen.height() - self.height()) // 2
         self.move(x, y)
     
     def setup_ui(self):
-        """Создает пользовательский интерфейс"""
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
@@ -55,54 +46,43 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(5, 5, 5, 5)
         layout.setSpacing(5)
         
-        # Создаем сплиттер
         self.splitter = QSplitter(Qt.Orientation.Vertical)
         self.splitter.setHandleWidth(3)
         
-        # Область редактирования
         self.editor = EditorWidget()
         self.editor.textChanged.connect(self.on_text_changed)
         self.editor.cursorPositionChanged.connect(self.update_cursor_position)
         self.splitter.addWidget(self.editor)
         
-        # Область вывода
         self.output = OutputWidget()
         self.output.error_clicked.connect(self.goto_error_line)
         self.splitter.addWidget(self.output)
         
-        # Устанавливаем начальные пропорции
         self.splitter.setSizes([490, 210])
         
         layout.addWidget(self.splitter)
     
     def setup_menu(self):
-        """Создает главное меню"""
-        # Устанавливаем шрифт для меню
         menu_font = QFont("Segoe UI", 9)
         self.menuBar().setFont(menu_font)
         
-        # Меню Файл
         file_menu = self.menuBar().addMenu("Файл")
         
-        # Создать
         new_action = QAction("Создать", self)
         new_action.setShortcut(QKeySequence.StandardKey.New)
         new_action.triggered.connect(self.new_file)
         file_menu.addAction(new_action)
         
-        # Открыть
         open_action = QAction("Открыть", self)
         open_action.setShortcut(QKeySequence.StandardKey.Open)
         open_action.triggered.connect(self.open_file)
         file_menu.addAction(open_action)
         
-        # Сохранить
         save_action = QAction("Сохранить", self)
         save_action.setShortcut(QKeySequence.StandardKey.Save)
         save_action.triggered.connect(self.save_file)
         file_menu.addAction(save_action)
         
-        # Сохранить как
         save_as_action = QAction("Сохранить как", self)
         save_as_action.setShortcut(QKeySequence.StandardKey.SaveAs)
         save_as_action.triggered.connect(self.save_file_as)
@@ -110,22 +90,18 @@ class MainWindow(QMainWindow):
         
         file_menu.addSeparator()
         
-        # Выход
         exit_action = QAction("Выход", self)
         exit_action.setShortcut(QKeySequence.StandardKey.Quit)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
         
-        # Меню Правка
         edit_menu = self.menuBar().addMenu("Правка")
         
-        # Отменить
         undo_action = QAction("Отменить", self)
         undo_action.setShortcut(QKeySequence.StandardKey.Undo)
         undo_action.triggered.connect(self.editor.undo)
         edit_menu.addAction(undo_action)
         
-        # Повторить
         redo_action = QAction("Повторить", self)
         redo_action.setShortcut(QKeySequence.StandardKey.Redo)
         redo_action.triggered.connect(self.editor.redo)
@@ -133,25 +109,21 @@ class MainWindow(QMainWindow):
         
         edit_menu.addSeparator()
         
-        # Вырезать
         cut_action = QAction("Вырезать", self)
         cut_action.setShortcut(QKeySequence.StandardKey.Cut)
         cut_action.triggered.connect(self.editor.cut)
         edit_menu.addAction(cut_action)
         
-        # Копировать
         copy_action = QAction("Копировать", self)
         copy_action.setShortcut(QKeySequence.StandardKey.Copy)
         copy_action.triggered.connect(self.editor.copy)
         edit_menu.addAction(copy_action)
         
-        # Вставить
         paste_action = QAction("Вставить", self)
         paste_action.setShortcut(QKeySequence.StandardKey.Paste)
         paste_action.triggered.connect(self.editor.paste)
         edit_menu.addAction(paste_action)
         
-        # Удалить
         delete_action = QAction("Удалить", self)
         delete_action.setShortcut(QKeySequence.StandardKey.Delete)
         delete_action.triggered.connect(self.editor.cut)
@@ -159,13 +131,11 @@ class MainWindow(QMainWindow):
         
         edit_menu.addSeparator()
         
-        # Выделить все
         select_all_action = QAction("Выделить все", self)
         select_all_action.setShortcut(QKeySequence.StandardKey.SelectAll)
         select_all_action.triggered.connect(self.editor.selectAll)
         edit_menu.addAction(select_all_action)
         
-        # Меню Текст
         text_menu = self.menuBar().addMenu("Текст")
         
         text_items = [
@@ -183,14 +153,12 @@ class MainWindow(QMainWindow):
             action.triggered.connect(lambda checked, text=item: self.show_text_info(text))
             text_menu.addAction(action)
         
-        # Меню Пуск
         run_menu = self.menuBar().addMenu("Пуск")
         run_action = QAction("Запустить анализ", self)
         run_action.setShortcut("F5")
         run_action.triggered.connect(self.run_analyzer)
         run_menu.addAction(run_action)
         
-        # Меню Справка
         help_menu = self.menuBar().addMenu("Справка")
         
         help_action = QAction("Вызов справки", self)
@@ -202,7 +170,6 @@ class MainWindow(QMainWindow):
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
         
-        # Сохраняем действия для панели инструментов
         self.actions = {
             'new': new_action,
             'open': open_action,
@@ -218,28 +185,23 @@ class MainWindow(QMainWindow):
         }
     
     def setup_toolbar(self):
-        """Создает панель инструментов с иконками"""
         toolbar = QToolBar("Инструменты")
         toolbar.setMovable(False)
         toolbar.setFloatable(False)
-        toolbar.setIconSize(QSize(24, 24))  # Размер иконок
-        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)  # Только иконки
+        toolbar.setIconSize(QSize(24, 24))
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         self.addToolBar(toolbar)
         
-        # Получаем стандартные иконки из темы
-        # 1. Создание документа
         new_icon = QIcon.fromTheme("document-new", QIcon(":/qt-project.org/styles/commonstyle/images/new-32.png"))
         self.actions['new'].setIcon(new_icon)
         self.actions['new'].setToolTip("Создать (Ctrl+N)")
         toolbar.addAction(self.actions['new'])
         
-        # 2. Открытие документа
         open_icon = QIcon.fromTheme("document-open", QIcon(":/qt-project.org/styles/commonstyle/images/open-32.png"))
         self.actions['open'].setIcon(open_icon)
         self.actions['open'].setToolTip("Открыть (Ctrl+O)")
         toolbar.addAction(self.actions['open'])
         
-        # 3. Сохранение
         save_icon = QIcon.fromTheme("document-save", QIcon(":/qt-project.org/styles/commonstyle/images/save-32.png"))
         self.actions['save'].setIcon(save_icon)
         self.actions['save'].setToolTip("Сохранить (Ctrl+S)")
@@ -247,13 +209,11 @@ class MainWindow(QMainWindow):
         
         toolbar.addSeparator()
         
-        # 4. Отмена
         undo_icon = QIcon.fromTheme("edit-undo", QIcon(":/qt-project.org/styles/commonstyle/images/undo-32.png"))
         self.actions['undo'].setIcon(undo_icon)
         self.actions['undo'].setToolTip("Отменить (Ctrl+Z)")
         toolbar.addAction(self.actions['undo'])
         
-        # 5. Повтор
         redo_icon = QIcon.fromTheme("edit-redo", QIcon(":/qt-project.org/styles/commonstyle/images/redo-32.png"))
         self.actions['redo'].setIcon(redo_icon)
         self.actions['redo'].setToolTip("Повторить (Ctrl+Y)")
@@ -261,19 +221,16 @@ class MainWindow(QMainWindow):
         
         toolbar.addSeparator()
         
-        # 6. Копировать
         copy_icon = QIcon.fromTheme("edit-copy", QIcon(":/qt-project.org/styles/commonstyle/images/copy-32.png"))
         self.actions['copy'].setIcon(copy_icon)
         self.actions['copy'].setToolTip("Копировать (Ctrl+C)")
         toolbar.addAction(self.actions['copy'])
         
-        # 7. Вырезать
         cut_icon = QIcon.fromTheme("edit-cut", QIcon(":/qt-project.org/styles/commonstyle/images/cut-32.png"))
         self.actions['cut'].setIcon(cut_icon)
         self.actions['cut'].setToolTip("Вырезать (Ctrl+X)")
         toolbar.addAction(self.actions['cut'])
         
-        # 8. Вставить
         paste_icon = QIcon.fromTheme("edit-paste", QIcon(":/qt-project.org/styles/commonstyle/images/paste-32.png"))
         self.actions['paste'].setIcon(paste_icon)
         self.actions['paste'].setToolTip("Вставить (Ctrl+V)")
@@ -281,7 +238,6 @@ class MainWindow(QMainWindow):
         
         toolbar.addSeparator()
         
-        # 9. Запуск анализатора
         run_icon = QIcon.fromTheme("system-run", QIcon(":/qt-project.org/styles/commonstyle/images/execute-32.png"))
         self.actions['run'].setIcon(run_icon)
         self.actions['run'].setToolTip("Запустить анализ (F5)")
@@ -289,40 +245,33 @@ class MainWindow(QMainWindow):
         
         toolbar.addSeparator()
         
-        # 10. Вызов справки
         help_icon = QIcon.fromTheme("help-contents", QIcon(":/qt-project.org/styles/commonstyle/images/help-32.png"))
         self.actions['help'].setIcon(help_icon)
         self.actions['help'].setToolTip("Справка (F1)")
         toolbar.addAction(self.actions['help'])
         
-        # 11. О программе
         about_icon = QIcon.fromTheme("help-about", QIcon(":/qt-project.org/styles/commonstyle/images/information-32.png"))
         self.actions['about'].setIcon(about_icon)
         self.actions['about'].setToolTip("О программе")
         toolbar.addAction(self.actions['about'])
     
     def setup_statusbar(self):
-        """Создает строку состояния"""
         self.statusbar = QStatusBar()
         self.setStatusBar(self.statusbar)
         
-        # Информация о позиции курсора
         self.cursor_position_label = QLabel("Стр: 1, Стб: 1")
         self.statusbar.addPermanentWidget(self.cursor_position_label)
         
-        # Информация о текущем файле
         self.file_info_label = QLabel("Новый документ")
         self.statusbar.addWidget(self.file_info_label)
     
     def update_cursor_position(self):
-        """Обновляет отображение позиции курсора"""
         cursor = self.editor.textCursor()
         line = cursor.blockNumber() + 1
         col = cursor.columnNumber() + 1
         self.cursor_position_label.setText(f"Стр: {line}, Стб: {col}")
     
     def update_window_title(self):
-        """Обновляет заголовок окна"""
         title = "Compiler"
         if self.current_file:
             title = f"{os.path.basename(self.current_file)} - {title}"
@@ -331,14 +280,12 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(title)
     
     def on_text_changed(self):
-        """Обработчик изменения текста"""
         self.update_window_title()
         
         if self.editor.is_modified():
             self.file_info_label.setText(f"✎ {os.path.basename(self.current_file) if self.current_file else 'Новый документ'}")
     
     def new_file(self):
-        """Создает новый файл"""
         if self.maybe_save():
             self.editor.clear()
             self.current_file = None
@@ -347,7 +294,6 @@ class MainWindow(QMainWindow):
             self.file_info_label.setText("Новый документ")
     
     def open_file(self):
-        """Открывает файл"""
         if self.maybe_save():
             file_path, _ = QFileDialog.getOpenFileName(
                 self, 
@@ -371,14 +317,12 @@ class MainWindow(QMainWindow):
                     QMessageBox.critical(self, "Ошибка", f"Не удалось открыть файл:\n{str(e)}")
     
     def save_file(self):
-        """Сохраняет файл"""
         if self.current_file:
             return self.save_file_to_path(self.current_file)
         else:
             return self.save_file_as()
     
     def save_file_as(self):
-        """Сохраняет файл с новым именем"""
         file_path, _ = QFileDialog.getSaveFileName(
             self, 
             "Сохранить файл", 
@@ -395,7 +339,6 @@ class MainWindow(QMainWindow):
         return False
     
     def save_file_to_path(self, file_path):
-        """Сохраняет текст в указанный файл"""
         try:
             with open(file_path, 'w', encoding='utf-8') as file:
                 file.write(self.editor.get_text())
@@ -411,7 +354,6 @@ class MainWindow(QMainWindow):
             return False
     
     def maybe_save(self):
-        """Проверяет, нужно ли сохранить изменения"""
         if not self.editor.is_modified():
             return True
         
@@ -432,22 +374,19 @@ class MainWindow(QMainWindow):
             return False
     
     def closeEvent(self, event):
-        """Обработчик закрытия окна"""
         if self.maybe_save():
             event.accept()
         else:
             event.ignore()
     
     def show_text_info(self, item_name):
-        """Показывает информацию из меню Текст"""
         QMessageBox.information(
             self, 
             item_name,
-            f"Информация по пункту '{item_name}' будет добавлена позже."
+            f"Информация по пункту '{item_name}'"
         )
     
     def run_analyzer(self):
-        """Запускает анализатор текста"""
         text = self.editor.get_text()
         
         if not text.strip():
@@ -468,7 +407,7 @@ class MainWindow(QMainWindow):
             if 'int' in line or 'float' in line:
                 if '=' in line:
                     if '1ASD' in line:
-                        self.output.append_message(f"{i}\tЕГГОР Неверное задание константы")
+                        self.output.append_message(f"{i}\terror Неверное задание константы")
             
             if re.match(r'^[A-Z]\d+$', line):
                 self.output.append_message(f"{i}\t{line}")
@@ -483,11 +422,9 @@ class MainWindow(QMainWindow):
         self.output.append_message("Анализ завершен")
     
     def goto_error_line(self, line_number):
-        """Переходит к строке с ошибкой"""
         self.editor.goto_line(line_number)
     
     def show_help(self):
-        """Показывает справку"""
         help_text = """
         <h2>Справка</h2>
         
@@ -520,12 +457,6 @@ class MainWindow(QMainWindow):
         <ul>
             <li>Запуск анализатора текста</li>
         </ul>
-        
-        <h3>Особенности:</h3>
-        <ul>
-            <li>При клике на номер строки в области вывода курсор переходит к этой строке</li>
-            <li>Подсветка синтаксиса Python</li>
-        </ul>
         """
         
         msg_box = QMessageBox(self)
@@ -537,13 +468,13 @@ class MainWindow(QMainWindow):
         msg_box.exec()
     
     def show_about(self):
-        """Показывает информацию о программе"""
         QMessageBox.about(
             self,
             "О программе",
             "<h2>Compiler</h2>"
-            "<p>Версия: 1.0</p>"
+            "<p>Версия: 1.3</p>"
             "<p>Лабораторная работа №1</p>"
+            "<p>автор: Kokunov Andrey 313</p>"
             "<p>Текстовый редактор с поддержкой языкового процессора</p>"
-            "<p>© 2024</p>"
+            "<p>© 2026</p>"
         )
