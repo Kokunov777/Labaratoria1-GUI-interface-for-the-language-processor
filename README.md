@@ -44,12 +44,13 @@ cmd
 если нет, установите через офицальный сайт https://www.python.org/downloads/
 так же установите зависимости 
 отроейте проект и через терминал установите зависимость 
-- pip install PySide6 or
+- pip install PySide6 
 - pip3 install PySide6
 
 затем запустите исходный код
-- python main.py or
+- python main.py 
 - python3 main.py 
+
 
 
 
