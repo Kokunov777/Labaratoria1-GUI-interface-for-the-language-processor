@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import os
 import sys
 import re
@@ -482,18 +479,9 @@ class MainWindow(QMainWindow):
             self,
             "О программе",
             "<h2>Compiler</h2>"
-<<<<<<< HEAD
             "<p>Версия: 2.0</p>"
             "<p>Лабораторная работа №1</p>"
             "<p>языковый процессор</p>"
             "<p>Поддерживает: C, C++, Java, C#, JavaScript, Python</p>"
             "<p>© 2026</p>"
         )
-=======
-            "<p>Версия: 2.5</p>"
-            "<p>Лабораторная работа №2</p>"
-            "<p>Лексический анализатор</p>"
-            "<p>Поддерживает: C, C++, Java, C#, JavaScript, Python</p>"
-            "<p>© 2026</p>"
-        )
->>>>>>> 6404097 (obnovlenie kod)
