@@ -47,9 +47,18 @@
 
 Строковые константы: последовательности символов в кавычках "..."
 
-## диаграмма 
+## тестоые примеры 
+
+ let z = Complex::new(3.0, 4.0);
+
+ let w: Complex<f64> = Complex::new(1.5, 2.5);
+ 
+
+let a = Complex { re: 2.0, im: -3.0 };
 
 
+use num_complex::Complex;
 
-
+let z = Complex::new(3.0, 4.0);
+let w: Complex<f64> = Complex::new(1.5, 2.5);
 
