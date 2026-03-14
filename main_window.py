@@ -10,11 +10,12 @@ from PySide6.QtWidgets import (
     QFileDialog, QMessageBox, QApplication,
     QSplitter, QStatusBar, QLabel, QToolBar
 )
-from PySide6.QtGui import QAction, QKeySequence, QFont, QIcon
+from PySide6.QtGui import QAction, QKeySequence, QFont, QIcon, QTextCursor
 from PySide6.QtCore import Qt, QTimer, QSize
 
 from editor_widget import EditorWidget
-from output_widget import OutputWidget
+from lexer.scanner import Scanner
+from ui.result_table import ResultTable
 
 
 class MainWindow(QMainWindow):
@@ -57,9 +58,10 @@ class MainWindow(QMainWindow):
         self.editor.cursorPositionChanged.connect(self.update_cursor_position)
         self.splitter.addWidget(self.editor)
         
-        self.output = OutputWidget()
-        self.output.error_clicked.connect(self.goto_error_line)
-        self.splitter.addWidget(self.output)
+        # Заменяем output на result_table
+        self.result_table = ResultTable()
+        self.result_table.error_clicked.connect(self.goto_error_position)
+        self.splitter.addWidget(self.result_table)
         
         self.splitter.setSizes([490, 210])
         
@@ -293,7 +295,7 @@ class MainWindow(QMainWindow):
             self.editor.clear()
             self.current_file = None
             self.update_window_title()
-            self.output.clear_output()
+            self.result_table.clear_results()  # Изменено с output на result_table
             self.file_info_label.setText("Новый документ")
     
     def open_file(self):
@@ -313,7 +315,7 @@ class MainWindow(QMainWindow):
                     self.editor.set_text(text)
                     self.current_file = file_path
                     self.update_window_title()
-                    self.output.clear_output()
+                    self.result_table.clear_results()  # Изменено с output на result_table
                     self.file_info_label.setText(os.path.basename(file_path))
                     
                 except Exception as e:
@@ -391,209 +393,37 @@ class MainWindow(QMainWindow):
     
     def run_analyzer(self):
         text = self.editor.get_text()
-        lines = text.split('\n')
         
         if not text.strip():
-            self.output.append_message("=" * 60)
-            self.output.append_message("Текст для анализа пуст")
-            self.output.append_message("=" * 60)
+            self.result_table.clear_results()
             return
         
-        self.output.clear_output()
-        self.output.append_message("=" * 60)
-        self.output.append_message("РЕЗУЛЬТАТЫ АНАЛИЗА КОДА")
-        self.output.append_message("=" * 60)
+        scanner = Scanner()
+        tokens, errors = scanner.scan(text)
         
-        error_count = 0
-        warning_count = 0
-        info_count = 0
+        self.result_table.display_tokens(tokens, errors)
         
-        for i, line in enumerate(lines, 1):
-            line_stripped = line.strip()
-            if not line_stripped:
-                continue
-            
-            if line_stripped.startswith('//') or line_stripped.startswith('#'):
-                continue
-            
-            original_line = line
-            line_for_analysis = line_stripped
-            
-            if ';' not in line_for_analysis and not line_for_analysis.endswith('{') and not line_for_analysis.endswith('}'):
-                if not any(keyword in line_for_analysis for keyword in ['if', 'else', 'for', 'while', 'do', 'switch']):
-                    self.output.append_message(f"Строка {i}: {original_line}")
-                    self.output.append_message(f"         ❌ Отсутствует точка с запятой в конце")
-                    self.output.append_message("")
-                    error_count += 1
-            
-            if '(' in line_for_analysis or ')' in line_for_analysis:
-                open_count = line_for_analysis.count('(')
-                close_count = line_for_analysis.count(')')
-                if open_count != close_count:
-                    self.output.append_message(f"Строка {i}: {original_line}")
-                    self.output.append_message(f"         ❌ Несбалансированные скобки (открыто: {open_count}, закрыто: {close_count})")
-                    self.output.append_message("")
-                    error_count += 1
-            
-            if '[' in line_for_analysis or ']' in line_for_analysis:
-                open_count = line_for_analysis.count('[')
-                close_count = line_for_analysis.count(']')
-                if open_count != close_count:
-                    self.output.append_message(f"Строка {i}: {original_line}")
-                    self.output.append_message(f"         ❌ Несбалансированные квадратные скобки")
-                    self.output.append_message("")
-                    error_count += 1
-            
-            if '{' in line_for_analysis or '}' in line_for_analysis:
-                open_count = line_for_analysis.count('{')
-                close_count = line_for_analysis.count('}')
-                if open_count != close_count:
-                    self.output.append_message(f"Строка {i}: {original_line}")
-                    self.output.append_message(f"         ❌ Несбалансированные фигурные скобки")
-                    self.output.append_message("")
-                    error_count += 1
-            
-            if '=' in line_for_analysis and '==' not in line_for_analysis and '!=' not in line_for_analysis:
-                if '=' in line_for_analysis and not any(op in line_for_analysis for op in ['+=', '-=', '*=', '/=', '%=', '&=', '|=', '^=', '<<=', '>>=']):
-                    if not re.search(r'\bfor\b.*\(.*;.*;.*\)', line_for_analysis):
-                        self.output.append_message(f"Строка {i}: {original_line}")
-                        self.output.append_message(f"         ⚠️ Возможно, вы хотели использовать '==' вместо '='")
-                        self.output.append_message("")
-                        warning_count += 1
-            
-            var_declaration = re.search(r'\b(int|float|double|char|bool|string|var)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*[=;]', line_for_analysis)
-            if var_declaration:
-                var_name = var_declaration.group(2)
-                found_usage = False
-                for j, check_line in enumerate(lines, 1):
-                    if j != i and var_name in check_line and '=' not in check_line.split(var_name)[0].strip().endswith(('int', 'float', 'double', 'char', 'bool', 'string', 'var')):
-                        found_usage = True
-                        break
-                if not found_usage and i < len(lines):
-                    self.output.append_message(f"Строка {i}: {original_line}")
-                    self.output.append_message(f"         ⚠️ Переменная '{var_name}' объявлена, но не используется")
-                    self.output.append_message("")
-                    warning_count += 1
-            
-            numbers = re.findall(r'\b\d+\b', line_for_analysis)
-            for num in numbers:
-                if len(num) > 2 and num not in ['0', '1']:
-                    context = line_for_analysis[:line_for_analysis.find(num)]
-                    if not any(keyword in context for keyword in ['const', 'define', 'enum']):
-                        self.output.append_message(f"Строка {i}: {original_line}")
-                        self.output.append_message(f"         ℹ️ Магическое число '{num}' - лучше вынести в константу")
-                        self.output.append_message("")
-                        info_count += 1
-            
-            if len(original_line) > 100:
-                self.output.append_message(f"Строка {i}: {original_line}")
-                self.output.append_message(f"         ℹ️ Слишком длинная строка ({len(original_line)} символов) - рекомендуется разбить")
-                self.output.append_message("")
-                info_count += 1
-            
-            if '\t' in original_line:
-                self.output.append_message(f"Строка {i}: {original_line}")
-                self.output.append_message(f"         ℹ️ Используется табуляция - рекомендуется использовать пробелы")
-                self.output.append_message("")
-                info_count += 1
-            
-            if original_line.rstrip() != original_line:
-                self.output.append_message(f"Строка {i}: {original_line}")
-                self.output.append_message(f"         ℹ️ Есть лишние пробелы в конце строки")
-                self.output.append_message("")
-                info_count += 1
-            
-            if '{}' in line_for_analysis or '{ }' in line_for_analysis:
-                self.output.append_message(f"Строка {i}: {original_line}")
-                self.output.append_message(f"         ⚠️ Пустой блок кода")
-                self.output.append_message("")
-                warning_count += 1
-            
-            if 'TODO' in line_for_analysis or 'FIXME' in line_for_analysis:
-                self.output.append_message(f"Строка {i}: {original_line}")
-                self.output.append_message(f"         📝 Найдено: {line_for_analysis}")
-                self.output.append_message("")
-                info_count += 1
-            
-            bad_names = re.findall(r'\b([a-z]{1,2}|[A-Z]{2,})\b', line_for_analysis)
-            for name in bad_names:
-                if name not in ['if', 'in', 'is', 'as', 'at', 'to', 'by', 'on', 'or', 'an']:
-                    context = line_for_analysis[:line_for_analysis.find(name)]
-                    if 'int' in context or 'float' in context or 'string' in context or 'var' in context:
-                        self.output.append_message(f"Строка {i}: {original_line}")
-                        self.output.append_message(f"         ⚠️ Неоднозначное имя переменной '{name}' - используйте более описательные имена")
-                        self.output.append_message("")
-                        warning_count += 1
-            
-            hungarian = re.search(r'\b(int|float|double|char|bool|str|arr|ptr)_([a-zA-Z_][a-zA-Z0-9_]*)', line_for_analysis)
-            if hungarian:
-                self.output.append_message(f"Строка {i}: {original_line}")
-                self.output.append_message(f"         ℹ️ Обнаружена венгерская нотация - рекомендуется использовать обычные имена")
-                self.output.append_message("")
-                info_count += 1
-        
-        full_text = text
-        brackets = {
-            '(': full_text.count('('),
-            ')': full_text.count(')'),
-            '[': full_text.count('['),
-            ']': full_text.count(']'),
-            '{': full_text.count('{'),
-            '}': full_text.count('}')
-        }
-        
-        if brackets['('] != brackets[')']:
-            self.output.append_message(f"Глобально:")
-            self.output.append_message(f"         ❌ Несбалансированные круглые скобки (открыто: {brackets['(']}, закрыто: {brackets[')']})")
-            self.output.append_message("")
-            error_count += 1
-        
-        if brackets['['] != brackets[']']:
-            self.output.append_message(f"Глобально:")
-            self.output.append_message(f"         ❌ Несбалансированные квадратные скобки")
-            self.output.append_message("")
-            error_count += 1
-        
-        if brackets['{'] != brackets['}']:
-            self.output.append_message(f"Глобально:")
-            self.output.append_message(f"         ❌ Несбалансированные фигурные скобки")
-            self.output.append_message("")
-            error_count += 1
-        
-        non_comment_lines = 0
-        for line in lines:
-            line_stripped = line.strip()
-            if line_stripped and not line_stripped.startswith('//') and not line_stripped.startswith('#'):
-                non_comment_lines += 1
-        
-        if non_comment_lines == 0:
-            self.output.append_message(f"Глобально:")
-            self.output.append_message(f"         ❌ Файл не содержит исполняемого кода (только комментарии)")
-            self.output.append_message("")
-            error_count += 1
-        
-        self.output.append_message("-" * 60)
-        
-        if error_count == 0 and warning_count == 0 and info_count == 0:
-            self.output.append_message("✅ АНАЛИЗ ЗАВЕРШЕН: Ошибок не найдено. Код соответствует стандартам!")
+        if errors:
+            self.statusbar.showMessage(f"Найдено ошибок: {len(errors)}", 3000)
         else:
-            self.output.append_message(f"📊 ИТОГИ:")
-            self.output.append_message(f"   Найдено ошибок: {error_count}")
-            self.output.append_message(f"   Найдено предупреждений: {warning_count}")
-            self.output.append_message(f"   Найдено замечаний: {info_count}")
-            self.output.append_message("")
-            
-            if error_count > 0:
-                self.output.append_message("❌ Требуется исправление ошибок")
-            elif warning_count > 0:
-                self.output.append_message("⚠️ Рекомендуется исправить предупреждения")
-            else:
-                self.output.append_message("ℹ️ Есть рекомендации по улучшению кода")
-        
-        self.output.append_message("=" * 60)
+            self.statusbar.showMessage(f"Анализ завершен. Найдено лексем: {len(tokens)}", 3000)
     
-    def goto_error_line(self, line_number):
-        self.editor.goto_line(line_number)
+    def goto_error_position(self, line, pos):
+        cursor = self.editor.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.Start)
+        
+        for _ in range(line - 1):
+            cursor.movePosition(QTextCursor.MoveOperation.NextBlock)
+        
+        for _ in range(pos - 1):
+            cursor.movePosition(QTextCursor.MoveOperation.NextCharacter)
+        
+        cursor.movePosition(QTextCursor.MoveOperation.NextCharacter, QTextCursor.MoveMode.KeepAnchor)
+        
+        self.editor.setTextCursor(cursor)
+        self.editor.setFocus()
+        
+        self.statusbar.showMessage(f"Переход к ошибке: строка {line}, позиция {pos}", 2000)
     
     def show_help(self):
         help_text = """
@@ -626,17 +456,16 @@ class MainWindow(QMainWindow):
         
         <h3>Меню Пуск (F5):</h3>
         <ul>
-            <li>Запуск универсального анализатора кода</li>
-            <li>Показывает код с ошибкой и отступом для наглядности</li>
-            <li>Проверяет: точки с запятой, скобки, операторы, переменные</li>
-            <li>Находит: магические числа, длинные строки, TODO/FIXME</li>
+            <li>Запуск лексического анализатора</li>
+            <li>Выделяет все лексемы и классифицирует их по типам</li>
+            <li>При клике на ошибку курсор переходит к проблемному месту</li>
         </ul>
         
         <h3>Особенности:</h3>
         <ul>
-            <li>При клике на номер строки в области вывода курсор переходит к этой строке</li>
             <li>Подсветка синтаксиса Python</li>
-            <li>Универсальный анализатор подходит для C, C++, Java, C#, JavaScript</li>
+            <li>Таблица результатов с типами лексем и позициями</li>
+            <li>Навигация по ошибкам</li>
         </ul>
         """
         
@@ -653,9 +482,18 @@ class MainWindow(QMainWindow):
             self,
             "О программе",
             "<h2>Compiler</h2>"
+<<<<<<< HEAD
             "<p>Версия: 2.0</p>"
             "<p>Лабораторная работа №1</p>"
             "<p>языковый процессор</p>"
             "<p>Поддерживает: C, C++, Java, C#, JavaScript, Python</p>"
             "<p>© 2026</p>"
         )
+=======
+            "<p>Версия: 2.5</p>"
+            "<p>Лабораторная работа №2</p>"
+            "<p>Лексический анализатор</p>"
+            "<p>Поддерживает: C, C++, Java, C#, JavaScript, Python</p>"
+            "<p>© 2026</p>"
+        )
+>>>>>>> 6404097 (obnovlenie kod)
