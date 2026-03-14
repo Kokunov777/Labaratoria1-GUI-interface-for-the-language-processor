@@ -1,4 +1,4 @@
-<#
+cd <#
 .Synopsis
 Activate a Python virtual environment for the current PowerShell session.
 
@@ -48,14 +48,7 @@ For more information on Execution Policies:
 https://go.microsoft.com/fwlink/?LinkID=135170
 
 #>
-Param(
-    [Parameter(Mandatory = $false)]
-    [String]
-    $VenvDir,
-    [Parameter(Mandatory = $false)]
-    [String]
-    $Prompt
-)
+
 
 <# Function declarations --------------------------------------------------- #>
 
